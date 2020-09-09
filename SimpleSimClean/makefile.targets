@@ -1,0 +1,56 @@
+#Makefile to generate the shared library that allows us to link our objects into root.
+#By default it places the file into the project directory as well as into the build tree
+#Ensure that LD_LIBRARY_PATH is defined to pick this up.
+#HCJS 2009/04/08
+
+IDIR			= ../include/
+SDIR			= ../src/
+XDIR			= ./src/
+ROOTGLIBS		= $(shell root-config --glibs)
+ROOTLIBS		= $(shell root-config --libs)		
+OutPutOpt     = -o # keep whitespace after "-o"
+
+USER_ROOTINCS   = $(IDIR)CIRootRunHeader.h $(IDIR)CIOutputEvent.h $(IDIR)CIOutputHit.h $(IDIR)CIOutputPhotoHit.h $(IDIR)CIOutputScintiHit.h $(IDIR)CIOutputPhotoDetectorHit.h $(IDIR)CIOutputSummedHit.h $(IDIR)CIOutputMaterialHit.h $(IDIR)LinkDef.h
+
+INTERFACEDICTIONARY = Event
+
+EVENTO			= $(INTERFACEDICTIONARY).o $(XDIR)CIRootRunHeader.o $(XDIR)CIOutputEvent.o 
+EVENTS			= $(INTERFACEDICTIONARY).cpp $(SDIR)CIRootRunHeader.cpp $(SDIR)CIOutputEvent.cpp 
+
+EVENTSO			= $(XDIR)lib$(INTERFACEDICTIONARY).so
+#CPPFLAGS		=  -I$(G4INCLUDE) -I$(VIS) -I$(IDIR) -I$(ROOTSYS)/include
+LDFLAGS			=   -L$(ROOTSYS)/lib/  $(ROOTGLIBS) $(ROOTLIBS)
+
+# There has got to be a better way to do this....
+$(INTERFACEDICTIONARY).o : $(INTERFACEDICTIONARY).cpp
+	@echo 'Building XXX file: $<'
+	@echo 'Invoking: GCC C++ Compiler'
+	g++ -DG4ANALYSIS_USE -I../include -fPIC -I${ROOTSYS}/include/ -I${G4INCLUDE}  -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+$(XDIR)CIRootRunHeader.o : $(SDIR)CIRootRunHeader.cpp
+	@echo 'Building XXX file: $<'
+	@echo 'Invoking: GCC C++ Compiler'
+	g++ -DG4ANALYSIS_USE -I../include -fPIC  -I${ROOTSYS}/include/ -I${G4INCLUDE} -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+# There has got to be a better way to do this....
+$(XDIR)CIOutputEvent.o : $(SDIR)CIOutputEvent.cpp
+	@echo 'Building XXX file: $<'
+	@echo 'Invoking: GCC C++ Compiler'
+	g++ -DG4ANALYSIS_USE -I../include -fPIC  -I${ROOTSYS}/include/ -I${G4INCLUDE} -O0 -g3 -Wall -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	@echo 'Finished building: $<'
+	@echo ' '
+
+$(EVENTSO):     $(EVENTO)
+		g++ -shared $(LDFLAGS) $^ $(OutPutOpt) $@ $(EXPLLINKLIBS)
+		cp $(EVENTSO) ../
+		@echo "$@ Built shared ROOT interface lib"
+		rm $(INTERFACEDICTIONARY).h $(INTERFACEDICTIONARY).cpp $(INTERFACEDICTIONARY).o $(INTERFACEDICTIONARY).d
+
+
+$(INTERFACEDICTIONARY).cpp: $(USER_ROOTINCS)
+		${ROOTSYS}/bin/rootcint -f $(INTERFACEDICTIONARY).cpp -c -I$(IDIR) $(USER_ROOTINCS)
+		
